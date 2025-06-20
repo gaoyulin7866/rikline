@@ -84,6 +84,7 @@ export interface ExtensionState {
 	mcpMarketplaceEnabled?: boolean
 	mcpRichDisplayEnabled: boolean
 	planActSeparateModelsSetting: boolean
+	miapiBaseUrl?: string
 	enableCheckpointsSetting?: boolean
 	platform: Platform
 	shouldShowAnnouncement: boolean

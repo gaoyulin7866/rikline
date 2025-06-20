@@ -58,6 +58,7 @@ interface ExtensionStateContextType extends ExtensionState {
 	setShowAnnouncement: (value: boolean) => void
 	setShouldShowAnnouncement: (value: boolean) => void
 	setPlanActSeparateModelsSetting: (value: boolean) => void
+	setMiapiBaseUrl: (value: string) => void
 	setEnableCheckpointsSetting: (value: boolean) => void
 	setMcpMarketplaceEnabled: (value: boolean) => void
 	setMcpRichDisplayEnabled: (value: boolean) => void
@@ -185,6 +186,7 @@ export const ExtensionStateContextProvider: React.FC<{
 		telemetrySetting: "unset",
 		distinctId: "",
 		planActSeparateModelsSetting: true,
+		miapiBaseUrl: "",
 		enableCheckpointsSetting: true,
 		mcpRichDisplayEnabled: true,
 		globalClineRulesToggles: {},
@@ -721,6 +723,11 @@ export const ExtensionStateContextProvider: React.FC<{
 				...prevState,
 				planActSeparateModelsSetting: value,
 			})),
+		setMiapiBaseUrl: (value) =>
+			setState((prevState) => ({
+				...prevState,
+				miapiBaseUrl: value,
+			})),
 		setEnableCheckpointsSetting: (value) =>
 			setState((prevState) => ({
 				...prevState,
@@ -795,6 +802,7 @@ export const ExtensionStateContextProvider: React.FC<{
 							: undefined,
 						telemetrySetting: state.telemetrySetting,
 						planActSeparateModelsSetting: state.planActSeparateModelsSetting,
+						miapiBaseUrl: state.miapiBaseUrl,
 						enableCheckpointsSetting: state.enableCheckpointsSetting,
 						mcpMarketplaceEnabled: state.mcpMarketplaceEnabled,
 						mcpRichDisplayEnabled: state.mcpRichDisplayEnabled,

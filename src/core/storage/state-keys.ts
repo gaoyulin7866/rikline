@@ -86,6 +86,7 @@ export type GlobalStateKey =
 	| "sapAiCoreModelId"
 	| "httpProxy"
 	| "mifyBaseUrl"
+	| "miapiBaseUrl"
 
 export type LocalStateKey =
 	| "localClineRulesToggles"

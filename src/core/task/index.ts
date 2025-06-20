@@ -115,6 +115,7 @@ import { featureFlagsService } from "@services/posthog/feature-flags/FeatureFlag
 import { StreamingJsonReplacer, ChangeLocation } from "@core/assistant-message/diff-json"
 import { isClaude4ModelFamily } from "@utils/model-utils"
 import { saveClineMessagesAndUpdateHistory } from "./message-state"
+import { MiapiService } from "@/services/miapi/MiapiService"
 
 export const USE_EXPERIMENTAL_CLAUDE4_FEATURES = false
 
@@ -188,6 +189,7 @@ export class Task {
 	private didCompleteReadingStream = false
 	private didAutomaticallyRetryFailedApiRequest = false
 	private enableCheckpoints: boolean
+	private miapiService: MiapiService
 
 	constructor(
 		context: vscode.ExtensionContext,
@@ -211,7 +213,9 @@ export class Task {
 		images?: string[],
 		files?: string[],
 		historyItem?: HistoryItem,
+		miapiBaseUrl?: string,
 	) {
+		this.miapiService = new MiapiService(miapiBaseUrl)
 		this.context = context
 		this.mcpHub = mcpHub
 		this.workspaceTracker = workspaceTracker
@@ -828,9 +832,16 @@ export class Task {
 		if (this.lastMessageTs !== askTs) {
 			throw new Error("Current ask promise was ignored") // could happen if we send multiple asks in a row i.e. with command_output. It's important that when we know an ask could fail, it is handled gracefully
 		}
+		let askResponseText: string = this.askResponseText || ""
+		if (askResponseText && askResponseText.indexOf("@miapi") > -1) {
+			const miapiResponse = await this.miapiService.getApiDetailById(askResponseText)
+			if (miapiResponse) {
+				askResponseText += `\n\napi接口详情为 \n\n${JSON.stringify(miapiResponse, null, 2)}`
+			}
+		}
 		const result = {
 			response: this.askResponse!,
-			text: this.askResponseText,
+			text: askResponseText,
 			images: this.askResponseImages,
 			files: this.askResponseFiles,
 		}
@@ -983,6 +994,13 @@ export class Task {
 		this.isInitialized = true
 
 		let imageBlocks: Anthropic.ImageBlockParam[] = formatResponse.imageBlocks(images)
+
+		if (task && task.indexOf("@miapi") > -1) {
+			const miapiResponse = await this.miapiService.getApiDetailById(task)
+			if (miapiResponse) {
+				task += `\n\napi接口详情为 \n\n${JSON.stringify(miapiResponse, null, 2)}`
+			}
+		}
 
 		let userContent: UserContent = [
 			{
