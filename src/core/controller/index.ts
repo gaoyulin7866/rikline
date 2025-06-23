@@ -140,6 +140,7 @@ export class Controller {
 			enableCheckpointsSetting,
 			isNewUser,
 			taskHistory,
+			miapiBaseUrl,
 		} = await getAllExtensionState(this.context)
 
 		const NEW_USER_TASK_COUNT_THRESHOLD = 10
@@ -179,6 +180,7 @@ export class Controller {
 			images,
 			files,
 			historyItem,
+			miapiBaseUrl,
 		)
 	}
 
@@ -988,6 +990,7 @@ export class Controller {
 			isNewUser,
 			mcpResponsesCollapsed,
 			terminalOutputLineLimit,
+			miapiBaseUrl,
 		} = await getAllExtensionState(this.context)
 
 		const localClineRulesToggles =
@@ -1022,6 +1025,7 @@ export class Controller {
 			mcpRichDisplayEnabled,
 			telemetrySetting,
 			planActSeparateModelsSetting,
+			miapiBaseUrl,
 			enableCheckpointsSetting: enableCheckpointsSetting ?? true,
 			distinctId: telemetryService.distinctId,
 			globalClineRulesToggles: globalClineRulesToggles || {},

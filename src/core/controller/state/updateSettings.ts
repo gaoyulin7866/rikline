@@ -35,6 +35,11 @@ export async function updateSettings(controller: Controller, request: UpdateSett
 			await controller.context.globalState.update("planActSeparateModelsSetting", request.planActSeparateModelsSetting)
 		}
 
+		// Update miapi base url setting
+		if (request.miapiBaseUrl !== undefined) {
+			await controller.context.globalState.update("miapiBaseUrl", request.miapiBaseUrl)
+		}
+
 		// Update checkpoints setting
 		if (request.enableCheckpointsSetting !== undefined) {
 			await controller.context.globalState.update("enableCheckpointsSetting", request.enableCheckpointsSetting)

@@ -83,6 +83,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 		switch (option.type) {
 			case ContextMenuOptionType.Problems:
 				return <span>Problems</span>
+			case ContextMenuOptionType.MiAPI:
+				return <span>MiApi</span>
 			case ContextMenuOptionType.Terminal:
 				return <span>Terminal</span>
 			case ContextMenuOptionType.URL:
@@ -184,7 +186,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 					zIndex: 1000,
 					display: "flex",
 					flexDirection: "column",
-					maxHeight: "200px",
+					maxHeight: "240px",
 					overflowY: "auto",
 				}}>
 				{/* Can't use virtuoso since it requires fixed height and menu height is dynamic based on # of items */}
@@ -254,6 +256,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({
 								/>
 							)}
 						{(option.type === ContextMenuOptionType.Problems ||
+							option.type === ContextMenuOptionType.MiAPI ||
 							option.type === ContextMenuOptionType.Terminal ||
 							((option.type === ContextMenuOptionType.File ||
 								option.type === ContextMenuOptionType.Folder ||

@@ -66,6 +66,7 @@ export enum ContextMenuOptionType {
 	URL = "url",
 	Git = "git",
 	NoResults = "noResults",
+	MiAPI = "miapi",
 }
 
 export interface ContextMenuQueryItem {
@@ -82,6 +83,7 @@ const DEFAULT_CONTEXT_MENU_OPTIONS = [
 	ContextMenuOptionType.Git,
 	ContextMenuOptionType.Folder,
 	ContextMenuOptionType.File,
+	ContextMenuOptionType.MiAPI,
 ]
 
 export function getContextMenuOptionIndex(option: ContextMenuOptionType) {
@@ -145,6 +147,9 @@ export function getContextMenuOptions(
 	}
 	if ("problems".startsWith(lowerQuery)) {
 		suggestions.push({ type: ContextMenuOptionType.Problems })
+	}
+	if ("miapi".startsWith(lowerQuery)) {
+		suggestions.push({ type: ContextMenuOptionType.MiAPI })
 	}
 	if (query.startsWith("http")) {
 		suggestions.push({ type: ContextMenuOptionType.URL, value: query })
@@ -256,7 +261,11 @@ export function shouldShowContextMenu(text: string, position: number): boolean {
 	}
 
 	// Don't show the menu if it's a problems or terminal
-	if (textAfterAt.toLowerCase().startsWith("problems") || textAfterAt.toLowerCase().startsWith("terminal")) {
+	if (
+		textAfterAt.toLowerCase().startsWith("problems") ||
+		textAfterAt.toLowerCase().startsWith("terminal") ||
+		textAfterAt.toLowerCase().startsWith("miapi")
+	) {
 		return false
 	}
 

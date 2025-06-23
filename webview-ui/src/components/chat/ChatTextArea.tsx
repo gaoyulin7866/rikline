@@ -425,6 +425,8 @@ const ChatTextArea = forwardRef<HTMLTextAreaElement, ChatTextAreaProps>(
 						insertValue = value || ""
 					} else if (type === ContextMenuOptionType.Problems) {
 						insertValue = "problems"
+					} else if (type === ContextMenuOptionType.MiAPI) {
+						insertValue = "miapi"
 					} else if (type === ContextMenuOptionType.Terminal) {
 						insertValue = "terminal"
 					} else if (type === ContextMenuOptionType.Git) {

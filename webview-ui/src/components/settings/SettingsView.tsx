@@ -8,7 +8,7 @@ import { vscode } from "@/utils/vscode"
 import { ExtensionMessage } from "@shared/ExtensionMessage"
 import { EmptyRequest, StringRequest } from "@shared/proto/common"
 import { PlanActMode, ResetStateRequest, TogglePlanActModeRequest, UpdateSettingsRequest } from "@shared/proto/state"
-import { VSCodeButton, VSCodeCheckbox, VSCodeLink, VSCodeTextArea } from "@vscode/webview-ui-toolkit/react"
+import { VSCodeButton, VSCodeCheckbox, VSCodeLink, VSCodeTextArea, VSCodeTextField } from "@vscode/webview-ui-toolkit/react"
 import { CheckCheck, FlaskConical, Info, LucideIcon, Settings, SquareMousePointer, SquareTerminal, Webhook } from "lucide-react"
 import { memo, useCallback, useEffect, useRef, useState } from "react"
 import { useEvent } from "react-use"
@@ -117,6 +117,8 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		version,
 		openRouterModels,
 		telemetrySetting,
+		miapiBaseUrl,
+		setMiapiBaseUrl,
 		setTelemetrySetting,
 		chatSettings,
 		setChatSettings,
@@ -146,6 +148,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		apiConfiguration,
 		telemetrySetting,
 		planActSeparateModelsSetting,
+		miapiBaseUrl: miapiBaseUrl ?? "",
 		enableCheckpointsSetting,
 		mcpMarketplaceEnabled,
 		mcpRichDisplayEnabled,
@@ -186,6 +189,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			await StateServiceClient.updateSettings(
 				UpdateSettingsRequest.create({
 					planActSeparateModelsSetting,
+					miapiBaseUrl: miapiBaseUrl ?? "",
 					telemetrySetting,
 					enableCheckpointsSetting,
 					mcpMarketplaceEnabled,
@@ -213,6 +217,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 				apiConfiguration,
 				telemetrySetting,
 				planActSeparateModelsSetting,
+				miapiBaseUrl: miapiBaseUrl ?? "",
 				enableCheckpointsSetting,
 				mcpMarketplaceEnabled,
 				mcpRichDisplayEnabled,
@@ -243,6 +248,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 			JSON.stringify(apiConfiguration) !== JSON.stringify(originalState.current.apiConfiguration) ||
 			telemetrySetting !== originalState.current.telemetrySetting ||
 			planActSeparateModelsSetting !== originalState.current.planActSeparateModelsSetting ||
+			miapiBaseUrl !== originalState.current.miapiBaseUrl ||
 			enableCheckpointsSetting !== originalState.current.enableCheckpointsSetting ||
 			mcpMarketplaceEnabled !== originalState.current.mcpMarketplaceEnabled ||
 			mcpRichDisplayEnabled !== originalState.current.mcpRichDisplayEnabled ||
@@ -259,6 +265,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		apiConfiguration,
 		telemetrySetting,
 		planActSeparateModelsSetting,
+		miapiBaseUrl,
 		enableCheckpointsSetting,
 		mcpMarketplaceEnabled,
 		mcpRichDisplayEnabled,
@@ -279,6 +286,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 				// Reset all tracked state to original values
 				setTelemetrySetting(originalState.current.telemetrySetting)
 				setPlanActSeparateModelsSetting(originalState.current.planActSeparateModelsSetting)
+				setMiapiBaseUrl(originalState.current.miapiBaseUrl ?? "")
 				setChatSettings(originalState.current.chatSettings)
 				if (typeof setApiConfiguration === "function") {
 					setApiConfiguration(originalState.current.apiConfiguration ?? {})
@@ -332,6 +340,7 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 		onDone,
 		setTelemetrySetting,
 		setPlanActSeparateModelsSetting,
+		setMiapiBaseUrl,
 		setChatSettings,
 		setApiConfiguration,
 		setEnableCheckpointsSetting,
@@ -631,6 +640,18 @@ const SettingsView = ({ onDone, targetSection }: SettingsViewProps) => {
 												previous mode. This may be helpful e.g. when using a strong reasoning model to
 												architect a plan for a cheaper coding model to act on.
 											</p>
+										</div>
+										<div className="mb-[5px]">
+											<VSCodeTextField
+												value={miapiBaseUrl ?? ""}
+												style={{ width: "100%" }}
+												type="text"
+												onChange={(e) => {
+													setMiapiBaseUrl((e.target as HTMLInputElement).value)
+												}}
+												placeholder="Enter Base Url...">
+												<span style={{ fontWeight: 500 }}>MiApi Base Url</span>
+											</VSCodeTextField>
 										</div>
 									</Section>
 								</div>
