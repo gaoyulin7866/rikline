@@ -6,6 +6,7 @@ import { CheckpointRestoreRequest } from "@shared/proto/checkpoints"
 import React, { forwardRef, useRef, useState } from "react"
 import DynamicTextArea from "react-textarea-autosize"
 import { highlightText } from "./task-header/TaskHeader"
+import MarkdownBlock from "../common/MarkdownBlock"
 
 interface UserMessageProps {
 	text?: string
@@ -146,7 +147,18 @@ const UserMessage: React.FC<UserMessageProps> = ({ text, images, files, messageT
 				</>
 			) : (
 				<span className="ph-no-capture" style={{ display: "block" }}>
-					{highlightText(editedText || text)}
+					{(editedText || text || "")
+						.split(/(<markdown_language>[\s\S]*?<\/markdown_language>)/g)
+						.map((part, index) => {
+							if (part.startsWith("<markdown_language>")) {
+								const content = part.substring(
+									"<markdown_language>".length,
+									part.length - "</markdown_language>".length,
+								)
+								return <MarkdownBlock key={index} markdown={content} />
+							}
+							return <React.Fragment key={index}>{highlightText(part)}</React.Fragment>
+						})}
 				</span>
 			)}
 			{((images && images.length > 0) || (files && files.length > 0)) && (
