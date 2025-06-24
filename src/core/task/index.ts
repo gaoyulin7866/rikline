@@ -818,7 +818,7 @@ export class Task {
 		if (this.taskState.lastMessageTs !== askTs) {
 			throw new Error("Current ask promise was ignored") // could happen if we send multiple asks in a row i.e. with command_output. It's important that when we know an ask could fail, it is handled gracefully
 		}
-		let askResponseText: string = this.askResponseText || ""
+		let askResponseText: string = this.taskState.askResponseText || ""
 		if (askResponseText && askResponseText.indexOf("@miapi") > -1) {
 			askResponseText += await this.getMiapiResponse(askResponseText)
 		}
