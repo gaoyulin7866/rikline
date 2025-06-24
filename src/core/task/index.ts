@@ -824,7 +824,7 @@ export class Task {
 		}
 		const result = {
 			response: this.taskState.askResponse!,
-			text: this.taskState.askResponseText,
+			text: askResponseText,
 			images: this.taskState.askResponseImages,
 			files: this.taskState.askResponseFiles,
 		}
