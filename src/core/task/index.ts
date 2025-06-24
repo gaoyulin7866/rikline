@@ -835,10 +835,7 @@ export class Task {
 		}
 		let askResponseText: string = this.askResponseText || ""
 		if (askResponseText && askResponseText.indexOf("@miapi") > -1) {
-			const miapiResponse = await this.miapiService.getApiDetailById(askResponseText)
-			if (miapiResponse) {
-				askResponseText += `\n\napi接口详情为 \n\n${JSON.stringify(miapiResponse, null, 2)}`
-			}
+			askResponseText += await this.getMiapiResponse(askResponseText)
 		}
 		const result = {
 			response: this.askResponse!,
@@ -851,6 +848,17 @@ export class Task {
 		this.askResponseImages = undefined
 		this.askResponseFiles = undefined
 		return result
+	}
+
+	async getMiapiResponse(text: string) {
+		if (text.indexOf("@miapi") === -1) {
+			return ""
+		}
+		const miapiResponse = await this.miapiService.getApiDetailById(text)
+		if (miapiResponse) {
+			return `\nMiApi接口详情如下\n<markdown_language>\n\`\`\`json\n ${JSON.stringify(miapiResponse, null, 2)}\n\`\`\`\n</markdown_language>`
+		}
+		return ""
 	}
 
 	async handleWebviewAskResponse(askResponse: ClineAskResponse, text?: string, images?: string[], files?: string[]) {
@@ -997,10 +1005,7 @@ export class Task {
 		let imageBlocks: Anthropic.ImageBlockParam[] = formatResponse.imageBlocks(images)
 
 		if (task && task.indexOf("@miapi") > -1) {
-			const miapiResponse = await this.miapiService.getApiDetailById(task)
-			if (miapiResponse) {
-				task += `\n\napi接口详情为 \n\n${JSON.stringify(miapiResponse, null, 2)}`
-			}
+			task += await this.getMiapiResponse(task)
 		}
 
 		let userContent: UserContent = [
