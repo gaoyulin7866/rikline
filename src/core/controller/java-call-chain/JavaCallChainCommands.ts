@@ -1,4 +1,5 @@
 import * as vscode from "vscode"
+import * as path from "path"
 import { JavaCallChainController } from "./JavaCallChainController"
 
 export class JavaCallChainCommands {
@@ -70,7 +71,22 @@ export class JavaCallChainCommands {
 		const isExternal = node.isExternal || node.filePath === "External"
 		const externalMark = isExternal ? " (外部)" : ""
 
-		let content = `${indent}- **${node.methodName}** (${node.filePath}:${node.lineNumber})${externalMark}\n`
+		// 生成可点击的文件路径链接
+		let filePathDisplay = node.filePath
+		if (node.filePath && node.filePath !== "External") {
+			try {
+				// 确保文件路径是绝对路径
+				const absolutePath = path.isAbsolute(node.filePath) ? node.filePath : path.resolve(node.filePath)
+				// 使用 vscode.Uri.file() 创建正确的文件 URI
+				const fileUri = vscode.Uri.file(absolutePath)
+				filePathDisplay = `${fileUri.toString()}#${node.lineNumber}`
+			} catch (error) {
+				// 如果路径处理失败，回退到原始显示
+				filePathDisplay = `${node.filePath}:${node.lineNumber}`
+			}
+		}
+
+		let content = `${indent}- **${node.methodName}** (${filePathDisplay})${externalMark}\n`
 
 		if (node.children && node.children.length > 0) {
 			for (const child of node.children) {
