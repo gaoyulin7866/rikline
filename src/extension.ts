@@ -30,6 +30,7 @@ import * as hostProviders from "@hosts/host-providers"
 import { vscodeHostBridgeClient } from "@/hosts/vscode/client/host-grpc-client"
 import { VscodeWebviewProvider } from "./core/webview/VscodeWebviewProvider"
 import { ExtensionContext } from "vscode"
+import { JavaCallChainCommands } from "./core/controller/java-call-chain/JavaCallChainCommands"
 
 /*
 Built using https://github.com/microsoft/vscode-webview-ui-toolkit
@@ -650,6 +651,9 @@ export async function activate(context: vscode.ExtensionContext) {
 			}
 		}),
 	)
+
+	// 注册Java调用链功能
+	JavaCallChainCommands.registerCommands(context)
 
 	return createClineAPI(outputChannel, sidebarWebview.controller)
 }

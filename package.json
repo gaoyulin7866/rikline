@@ -200,6 +200,12 @@
 				"command": "cline.openWalkthrough",
 				"title": "Open Walkthrough",
 				"category": "Cline"
+			},
+			{
+				"command": "javaCallChain.exportCallChain",
+				"title": "生成调用链",
+				"category": "Java调用链",
+				"icon": "$(export)"
 			}
 		],
 		"keybindings": [
@@ -294,6 +300,11 @@
 					"command": "cline.addToChat",
 					"group": "navigation",
 					"when": "editorHasSelection"
+				},
+				{
+					"command": "javaCallChain.exportCallChain",
+					"group": "navigation@3",
+					"when": "resourceLangId == java"
 				}
 			],
 			"terminal/context": [
