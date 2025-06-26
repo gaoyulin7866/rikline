@@ -72,32 +72,16 @@ export class JavaCallChainCommands {
 		const externalMark = isExternal ? " (外部)" : ""
 
 		// 生成可点击的文件路径链接
-		let filePathDisplay = node.filePath
+		let fileLink = `${node.filePath}:${node.lineNumber}`
 		if (node.filePath && node.filePath !== "External") {
 			try {
-				// 获取当前工作区根目录
-				const workspaceFolders = vscode.workspace.workspaceFolders
-				if (workspaceFolders && workspaceFolders.length > 0) {
-					const workspaceRoot = workspaceFolders[0].uri.fsPath
-					const absolutePath = path.isAbsolute(node.filePath) ? node.filePath : path.resolve(node.filePath)
-
-					// 计算相对于工作区根目录的路径
-					const relativePath = path.relative(workspaceRoot, absolutePath)
-
-					// 使用相对路径，这样在Markdown预览中就能正常识别
-					filePathDisplay = `./${relativePath.replace(/\\/g, "/")}#${node.lineNumber}`
-				} else {
-					// 如果没有工作区，回退到原始显示
-					filePathDisplay = `${node.filePath}:${node.lineNumber}`
-				}
+				fileLink = `file://${path.resolve(node.filePath).replace(/\\/g, "/")}#L${node.lineNumber}`
 			} catch (error) {
 				// 如果路径处理失败，回退到原始显示
-				filePathDisplay = `${node.filePath}:${node.lineNumber}`
+				fileLink = `${node.filePath}:${node.lineNumber}`
 			}
 		}
-
-		let content = `${indent}- **${node.methodName}** [${node.className}#${node.lineNumber}行](${filePathDisplay})${externalMark}\n`
-
+		let content = `${indent}- **${node.methodName}** [${node.className}#${node.lineNumber}行](${fileLink})${externalMark}\n`
 		if (node.children && node.children.length > 0) {
 			for (const child of node.children) {
 				content += this.generateTreeContent(child, level + 1)
