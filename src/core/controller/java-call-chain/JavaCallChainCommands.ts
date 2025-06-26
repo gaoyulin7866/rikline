@@ -70,11 +70,7 @@ export class JavaCallChainCommands {
 		const isExternal = node.isExternal || node.filePath === "External"
 		const externalMark = isExternal ? " (外部)" : ""
 
-		let content = `${indent}- **${node.methodName}** (${node.className})${externalMark}\n`
-
-		if (node.filePath !== "External") {
-			content += `${indent}  - 位置: ${node.filePath}:${node.lineNumber}\n`
-		}
+		let content = `${indent}- **${node.methodName}** (${node.filePath}:${node.lineNumber})${externalMark}\n`
 
 		if (node.children && node.children.length > 0) {
 			for (const child of node.children) {
