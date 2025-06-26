@@ -21,25 +21,40 @@ export class JavaCallChainCommands {
 	 */
 	private static async exportCallChain(): Promise<void> {
 		try {
-			const controller = JavaCallChainController.getInstance()
-			const result = await controller.analyzeCallChainAtCursor()
+			// 显示进度条和loading状态
+			await vscode.window.withProgress(
+				{
+					location: vscode.ProgressLocation.Notification,
+					title: "正在分析Java调用链...",
+					cancellable: false,
+				},
+				async (progress) => {
+					progress.report({ message: "正在获取控制器实例..." })
+					const controller = JavaCallChainController.getInstance()
 
-			if (!result) {
-				vscode.window.showWarningMessage("无法分析当前方法的调用链")
-				return
-			}
+					progress.report({ message: "正在分析当前方法的调用链..." })
+					const result = await controller.analyzeCallChainAtCursor()
 
-			// 生成导出内容
-			const exportContent = this.generateExportContent(result)
+					if (!result) {
+						vscode.window.showWarningMessage("无法分析当前方法的调用链")
+						return
+					}
 
-			// 创建新文档
-			const document = await vscode.workspace.openTextDocument({
-				content: exportContent,
-				language: "markdown",
-			})
+					progress.report({ message: "正在生成导出内容..." })
+					// 生成导出内容
+					const exportContent = this.generateExportContent(result)
 
-			await vscode.window.showTextDocument(document)
-			vscode.window.showInformationMessage("调用链已导出到新文档")
+					progress.report({ message: "正在创建新文档..." })
+					// 创建新文档
+					const document = await vscode.workspace.openTextDocument({
+						content: exportContent,
+						language: "markdown",
+					})
+
+					await vscode.window.showTextDocument(document)
+					vscode.window.showInformationMessage("调用链已导出到新文档")
+				},
+			)
 		} catch (error) {
 			vscode.window.showErrorMessage(`生成调用链时出错: ${error}`)
 		}
