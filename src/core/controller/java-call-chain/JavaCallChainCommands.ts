@@ -24,8 +24,8 @@ export class JavaCallChainCommands {
 			// 显示进度条和loading状态
 			await vscode.window.withProgress(
 				{
-					location: vscode.ProgressLocation.Notification,
-					title: "正在分析Java调用链...",
+					location: vscode.ProgressLocation.Window,
+					title: "解析进度",
 					cancellable: false,
 				},
 				async (progress) => {
@@ -33,7 +33,7 @@ export class JavaCallChainCommands {
 					const controller = JavaCallChainController.getInstance()
 
 					progress.report({ message: "正在分析当前方法的调用链..." })
-					const result = await controller.analyzeCallChainAtCursor()
+					const result = await controller.analyzeCallChain()
 
 					if (!result) {
 						vscode.window.showWarningMessage("无法分析当前方法的调用链")
@@ -51,8 +51,9 @@ export class JavaCallChainCommands {
 						language: "markdown",
 					})
 
+					progress.report({ message: "调用链解析已完成" })
+
 					await vscode.window.showTextDocument(document)
-					vscode.window.showInformationMessage("调用链已导出到新文档")
 				},
 			)
 		} catch (error) {

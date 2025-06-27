@@ -35,7 +35,7 @@ export class JavaCallChainController {
 	 * 分析当前光标位置的方法向上调用链（查找调用当前方法的方法）
 	 * 会在整个工作区的所有Java文件中搜索调用当前方法的方法
 	 */
-	public async analyzeCallChainAtCursor(): Promise<CallChainResult | null> {
+	public async analyzeCallChain(): Promise<CallChainResult | null> {
 		const editor = vscode.window.activeTextEditor
 		if (!editor || editor.document.languageId !== "java") {
 			vscode.window.showWarningMessage("请在Java文件中使用此功能")
@@ -64,6 +64,236 @@ export class JavaCallChainController {
 			depth: this.calculateDepth(callChain),
 			totalMethods: this.countTotalMethods(callChain),
 		}
+	}
+
+	/**
+	 * 智能计算大括号，忽略字符串和正则表达式中的大括号
+	 */
+	private calculateBraceCount(line: string): { openBraces: number; closeBraces: number } {
+		let openBraces = 0
+		let closeBraces = 0
+		let inString = false
+		let inCharLiteral = false
+		let inRegex = false
+		let inComment = false
+		let inBlockComment = false
+		let escapeNext = false
+		let stringDelimiter = '"'
+		let regexDelimiter = "/"
+		let commentStart = -1
+
+		for (let i = 0; i < line.length; i++) {
+			const char = line[i]
+			const nextChar = line[i + 1] || ""
+			const prevChar = i > 0 ? line[i - 1] : ""
+
+			// 处理转义字符
+			if (escapeNext) {
+				escapeNext = false
+				continue
+			}
+
+			if (char === "\\") {
+				escapeNext = true
+				continue
+			}
+
+			// 处理行注释
+			if (!inString && !inCharLiteral && !inRegex && !inBlockComment && char === "/" && nextChar === "/") {
+				inComment = true
+				commentStart = i
+				break // 行注释开始后，后面的内容都忽略
+			}
+
+			// 处理块注释开始
+			if (!inString && !inCharLiteral && !inRegex && !inComment && char === "/" && nextChar === "*") {
+				inBlockComment = true
+				i++ // 跳过下一个字符
+				continue
+			}
+
+			// 处理块注释结束
+			if (inBlockComment && char === "*" && nextChar === "/") {
+				inBlockComment = false
+				i++ // 跳过下一个字符
+				continue
+			}
+
+			// 如果在注释中，跳过所有字符
+			if (inComment || inBlockComment) {
+				continue
+			}
+
+			// 处理字符串字面量
+			if (!inCharLiteral && !inRegex && (char === '"' || char === "'")) {
+				if (!inString) {
+					inString = true
+					stringDelimiter = char
+				} else if (char === stringDelimiter) {
+					inString = false
+				}
+				continue
+			}
+
+			// 处理字符字面量
+			if (!inString && !inRegex && char === "'") {
+				if (!inCharLiteral) {
+					inCharLiteral = true
+				} else {
+					inCharLiteral = false
+				}
+				continue
+			}
+
+			// 处理正则表达式 - 更智能的检测
+			if (!inString && !inCharLiteral && char === "/") {
+				if (!inRegex) {
+					// 更精确的正则表达式检测
+					if (this.isRegexStart(line, i)) {
+						inRegex = true
+						regexDelimiter = "/"
+					}
+				} else {
+					// 检查是否是正则结束
+					if (this.isRegexEnd(line, i)) {
+						inRegex = false
+					}
+				}
+				continue
+			}
+
+			// 只有在不在字符串、字符字面量、正则表达式或注释中时才计算大括号
+			if (!inString && !inCharLiteral && !inRegex && !inComment && !inBlockComment) {
+				if (char === "{") {
+					openBraces++
+				} else if (char === "}") {
+					closeBraces++
+				}
+			}
+		}
+
+		return { openBraces, closeBraces }
+	}
+
+	/**
+	 * 判断是否是正则表达式的开始
+	 */
+	private isRegexStart(line: string, slashIndex: number): boolean {
+		const beforeSlash = line.substring(0, slashIndex).trim()
+		const afterSlash = line.substring(slashIndex + 1)
+
+		// 检查前面的上下文
+		const beforeContext = beforeSlash.split(/\s+/)
+		const lastToken = beforeContext[beforeContext.length - 1]
+
+		// 1. 赋值操作符
+		if (
+			beforeSlash.endsWith("=") ||
+			beforeSlash.endsWith("+=") ||
+			beforeSlash.endsWith("-=") ||
+			beforeSlash.endsWith("*=") ||
+			beforeSlash.endsWith("/=") ||
+			beforeSlash.endsWith("%=") ||
+			beforeSlash.endsWith("&=") ||
+			beforeSlash.endsWith("|=") ||
+			beforeSlash.endsWith("^=") ||
+			beforeSlash.endsWith("<<=") ||
+			beforeSlash.endsWith(">>=") ||
+			beforeSlash.endsWith(">>>=")
+		) {
+			return true
+		}
+
+		// 2. 方法调用参数
+		if (beforeSlash.endsWith("(") || beforeSlash.endsWith(",")) {
+			return true
+		}
+
+		// 3. 控制流语句
+		const controlFlowKeywords = ["if", "while", "for", "switch", "return", "throw", "assert"]
+		if (controlFlowKeywords.includes(lastToken)) {
+			return true
+		}
+
+		// 4. 逻辑操作符
+		if (beforeSlash.endsWith("&&") || beforeSlash.endsWith("||") || beforeSlash.endsWith("?")) {
+			return true
+		}
+
+		// 5. 比较操作符
+		if (
+			beforeSlash.endsWith("==") ||
+			beforeSlash.endsWith("!=") ||
+			beforeSlash.endsWith("===") ||
+			beforeSlash.endsWith("!==") ||
+			beforeSlash.endsWith("<") ||
+			beforeSlash.endsWith(">") ||
+			beforeSlash.endsWith("<=") ||
+			beforeSlash.endsWith(">=")
+		) {
+			return true
+		}
+
+		// 6. 数组访问
+		if (beforeSlash.endsWith("[")) {
+			return true
+		}
+
+		// 7. 对象属性访问
+		if (beforeSlash.endsWith(".")) {
+			return true
+		}
+
+		// 8. 三元操作符
+		if (beforeSlash.endsWith(":")) {
+			return true
+		}
+
+		// 9. 函数调用
+		if (beforeSlash.endsWith(";") || beforeSlash.endsWith("{")) {
+			return true
+		}
+
+		// 10. 检查后面是否跟着有效的正则表达式模式
+		// 正则表达式不能以 * 或 + 开头（除非转义）
+		if (afterSlash.length > 0) {
+			const firstChar = afterSlash[0]
+			if (firstChar === "*" || firstChar === "+" || firstChar === "?") {
+				return false
+			}
+
+			// 检查是否是有效的正则表达式开始
+			// 正则表达式通常以字母、数字、特殊字符或转义序列开始
+			if (/^[a-zA-Z0-9_$\[\]\(\)\{\}\.\+\*\?\|\^\\]/.test(afterSlash)) {
+				return true
+			}
+		}
+
+		return false
+	}
+
+	/**
+	 * 判断是否是正则表达式的结束
+	 */
+	private isRegexEnd(line: string, slashIndex: number): boolean {
+		const afterSlash = line.substring(slashIndex + 1)
+
+		// 检查正则表达式标志
+		// 有效的标志字符：g, i, m, s, u, y
+		const validFlags = /^[gimsuy]*/
+		const flagMatch = afterSlash.match(validFlags)
+
+		if (flagMatch) {
+			const flags = flagMatch[0]
+			const afterFlags = afterSlash.substring(flags.length)
+
+			// 如果标志后面跟着空白字符、分号、逗号、括号等，说明正则表达式结束
+			if (afterFlags.length === 0 || /^[\s;,\[\]\(\)\{\}]/.test(afterFlags)) {
+				return true
+			}
+		}
+
+		return false
 	}
 
 	/**
@@ -104,8 +334,10 @@ export class JavaCallChainController {
 			}
 
 			if (inClass) {
-				braceCount += (line.match(/\{/g) || []).length
-				braceCount -= (line.match(/\}/g) || []).length
+				// 使用智能大括号计数
+				const braceResult = this.calculateBraceCount(line)
+				braceCount += braceResult.openBraces
+				braceCount -= braceResult.closeBraces
 
 				// 只有当大括号计数为0且不在类开始行时才离开类作用域
 				if (braceCount <= 0 && i >= classStartLine) {
@@ -435,8 +667,10 @@ export class JavaCallChainController {
 
 			// 如果在类内部，计算大括号
 			if (inClass) {
-				braceCount += (line.match(/\{/g) || []).length
-				braceCount -= (line.match(/\}/g) || []).length
+				// 使用智能大括号计数
+				const braceResult = this.calculateBraceCount(line)
+				braceCount += braceResult.openBraces
+				braceCount -= braceResult.closeBraces
 
 				// 只有当大括号计数为0且不在类开始行时才离开类作用域
 				if (braceCount <= 0 && i >= classStartLine) {
@@ -858,8 +1092,10 @@ export class JavaCallChainController {
 			}
 
 			if (inMethod) {
-				braceCount += (line.match(/\{/g) || []).length
-				braceCount -= (line.match(/\}/g) || []).length
+				// 使用智能大括号计数
+				const braceResult = this.calculateBraceCount(line)
+				braceCount += braceResult.openBraces
+				braceCount -= braceResult.closeBraces
 
 				if (braceCount === 0) {
 					return { start: methodStart, end: i }
