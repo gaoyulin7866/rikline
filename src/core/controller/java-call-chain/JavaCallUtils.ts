@@ -4,7 +4,7 @@ import * as path from "path"
 
 export class JavaCallUtils {
 	/**
-	 * 智能计算大括号，忽略字符串、字符字面量、注解和泛型参数中的大括号
+	 * 智能计算大括号，忽略字符串、字符字面量、注解、泛型参数和正则表达式中的大括号
 	 */
 	public static calculateBraceCount(line: string): { openBraces: number; closeBraces: number } {
 		let openBraces = 0
@@ -16,6 +16,7 @@ export class JavaCallUtils {
 		let inGeneric = false
 		let inComment = false
 		let inBlockComment = false
+		let inRegex = false
 		let escapeNext = false
 		let stringDelimiter = '"'
 		let annotationLevel = 0
@@ -45,6 +46,7 @@ export class JavaCallUtils {
 				!inAnnotation &&
 				!inGeneric &&
 				!inBlockComment &&
+				!inRegex &&
 				char === "/" &&
 				nextChar === "/"
 			) {
@@ -60,6 +62,7 @@ export class JavaCallUtils {
 				!inAnnotation &&
 				!inGeneric &&
 				!inComment &&
+				!inRegex &&
 				char === "/" &&
 				nextChar === "*"
 			) {
@@ -80,12 +83,65 @@ export class JavaCallUtils {
 				continue
 			}
 
+			// 处理正则表达式开始
+			if (
+				!inString &&
+				!inCharLiteral &&
+				!inTextBlock &&
+				!inAnnotation &&
+				!inGeneric &&
+				!inComment &&
+				!inBlockComment &&
+				!inRegex &&
+				char === "/"
+			) {
+				// 检查是否是正则表达式开始
+				const beforeChar = i > 0 ? line[i - 1] : ""
+				const beforeBeforeChar = i > 1 ? line[i - 2] : ""
+
+				// 正则表达式通常出现在以下情况：
+				// 1. 方法调用中：.matches("/pattern/")
+				// 2. 变量赋值：String pattern = "/pattern/"
+				// 3. 条件判断：if (str.matches("/pattern/"))
+				const isRegexStart = this.isRegexStart(line, i, beforeChar, beforeBeforeChar)
+
+				if (isRegexStart) {
+					inRegex = true
+				}
+				continue
+			}
+
+			// 处理正则表达式结束
+			if (inRegex && char === "/") {
+				// 检查是否是转义的斜杠
+				if (escapeNext) {
+					// 这是转义的斜杠，不是正则表达式结束
+					continue
+				}
+
+				// 检查是否是正则表达式结束
+				const nextNextNextChar = line[i + 3] || ""
+				const afterSlash = line.substring(i + 1).trim()
+
+				// 正则表达式结束的条件：
+				// 1. 后面跟着标志字符：/pattern/g
+				// 2. 后面跟着分号、逗号、括号等：/pattern/;
+				// 3. 行尾
+				const isRegexEnd = this.isRegexEnd(line, i, afterSlash, nextNextNextChar)
+
+				if (isRegexEnd) {
+					inRegex = false
+				}
+				continue
+			}
+
 			// 处理文本块 (Java 15+) - 修复逻辑
 			if (
 				!inString &&
 				!inCharLiteral &&
 				!inAnnotation &&
 				!inGeneric &&
+				!inRegex &&
 				char === '"' &&
 				nextChar === '"' &&
 				nextNextChar === '"'
@@ -107,7 +163,7 @@ export class JavaCallUtils {
 			}
 
 			// 处理字符串字面量 - 修复逻辑
-			if (!inCharLiteral && !inTextBlock && !inAnnotation && !inGeneric && char === '"') {
+			if (!inCharLiteral && !inTextBlock && !inAnnotation && !inGeneric && !inRegex && char === '"') {
 				if (!inString) {
 					inString = true
 					stringDelimiter = char
@@ -118,7 +174,7 @@ export class JavaCallUtils {
 			}
 
 			// 处理字符字面量 - 修复逻辑
-			if (!inString && !inTextBlock && !inAnnotation && !inGeneric && char === "'") {
+			if (!inString && !inTextBlock && !inAnnotation && !inGeneric && !inRegex && char === "'") {
 				if (!inCharLiteral) {
 					inCharLiteral = true
 				} else {
@@ -128,7 +184,7 @@ export class JavaCallUtils {
 			}
 
 			// 处理注解
-			if (!inString && !inCharLiteral && !inTextBlock && !inAnnotation && char === "@") {
+			if (!inString && !inCharLiteral && !inTextBlock && !inAnnotation && !inRegex && char === "@") {
 				inAnnotation = true
 				annotationLevel = 0
 				continue
@@ -148,7 +204,7 @@ export class JavaCallUtils {
 			}
 
 			// 处理泛型参数 - 改进检测逻辑
-			if (!inString && !inCharLiteral && !inTextBlock && !inAnnotation && char === "<") {
+			if (!inString && !inCharLiteral && !inTextBlock && !inAnnotation && !inRegex && char === "<") {
 				// 检查是否是泛型开始（前面是标识符或类名）
 				const beforeChar = i > 0 ? line[i - 1] : ""
 				const beforeBeforeChar = i > 1 ? line[i - 2] : ""
@@ -177,8 +233,17 @@ export class JavaCallUtils {
 				continue
 			}
 
-			// 只有在不在字符串、字符字面量、文本块、注解、泛型或注释中时才计算大括号
-			if (!inString && !inCharLiteral && !inTextBlock && !inAnnotation && !inGeneric && !inComment && !inBlockComment) {
+			// 只有在不在字符串、字符字面量、文本块、注解、泛型、正则表达式或注释中时才计算大括号
+			if (
+				!inString &&
+				!inCharLiteral &&
+				!inTextBlock &&
+				!inAnnotation &&
+				!inGeneric &&
+				!inRegex &&
+				!inComment &&
+				!inBlockComment
+			) {
 				if (char === "{") {
 					openBraces++
 				} else if (char === "}") {
@@ -188,6 +253,137 @@ export class JavaCallUtils {
 		}
 
 		return { openBraces, closeBraces }
+	}
+
+	/**
+	 * 判断是否是正则表达式开始
+	 */
+	private static isRegexStart(line: string, slashIndex: number, beforeChar: string, beforeBeforeChar: string): boolean {
+		// 检查前面是否是注释开始
+		if (beforeChar === "/" || beforeChar === "*") {
+			return false
+		}
+
+		// 检查前面是否是行注释
+		if (slashIndex > 0 && line[slashIndex - 1] === "/") {
+			return false
+		}
+
+		// 检查前面是否是块注释结束
+		if (slashIndex > 1 && line[slashIndex - 2] === "*" && line[slashIndex - 1] === "/") {
+			return false
+		}
+
+		// 检查前面是否是字符串字面量
+		const beforeText = line.substring(0, slashIndex)
+		let quoteCount = 0
+		for (let j = 0; j < beforeText.length; j++) {
+			if (beforeText[j] === '"' && (j === 0 || beforeText[j - 1] !== "\\")) {
+				quoteCount++
+			}
+		}
+		if (quoteCount % 2 === 1) {
+			return false // 在字符串内部
+		}
+
+		// 检查前面是否是字符字面量
+		let singleQuoteCount = 0
+		for (let j = 0; j < beforeText.length; j++) {
+			if (beforeText[j] === "'" && (j === 0 || beforeText[j - 1] !== "\\")) {
+				singleQuoteCount++
+			}
+		}
+		if (singleQuoteCount % 2 === 1) {
+			return false // 在字符字面量内部
+		}
+
+		// 1. 检查前面是否是方法调用的一部分（更精确的检测）
+		if (beforeChar === ".") {
+			// 向前查找方法名
+			const beforeDot = line.substring(0, slashIndex - 1).trim()
+			const methodNames = ["matches", "replaceAll", "replaceFirst", "split"]
+			return methodNames.some((method) => beforeDot.endsWith(method))
+		}
+
+		// 2. 检查前面是否是赋值操作符（排除除法）
+		if (beforeChar === "=" || beforeChar === "+" || beforeChar === "-" || beforeChar === "*") {
+			return true
+		}
+
+		// 3. 检查前面是否是括号（方法参数）
+		if (beforeChar === "(" || beforeChar === ",") {
+			return true
+		}
+
+		// 4. 检查前面是否是关键字（更精确的检测）
+		const words = beforeText.trim().split(/\s+/)
+		const lastWord = words[words.length - 1]
+
+		// 更精确的关键字检测
+		const regexKeywords = ["matches", "replaceAll", "replaceFirst", "split"]
+		if (regexKeywords.includes(lastWord)) {
+			return true
+		}
+
+		// 检查 Pattern.compile 的情况
+		if (lastWord === "compile" && words.length >= 2 && words[words.length - 2] === "Pattern") {
+			return true
+		}
+
+		// 5. 检查前面是否是空格，然后是标识符（变量声明）
+		if (beforeChar === " " && /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(beforeBeforeChar)) {
+			return true
+		}
+
+		// 6. 检查是否是 return 语句中的正则表达式
+		if (beforeChar === " " && beforeBeforeChar === " ") {
+			if (beforeText.trim().endsWith("return")) {
+				return true
+			}
+		}
+
+		// 7. 检查是否是 throw 语句中的正则表达式
+		if (beforeText.trim().endsWith("throw")) {
+			return true
+		}
+
+		return false
+	}
+
+	/**
+	 * 判断是否是正则表达式结束
+	 */
+	private static isRegexEnd(line: string, slashIndex: number, afterSlash: string, nextNextNextChar: string): boolean {
+		// 1. 后面跟着正则表达式标志字符（更精确的检测）
+		if (/^[gimsux]*[^a-zA-Z0-9_]*/.test(afterSlash)) {
+			// 确保标志字符后面跟着有效的结束字符
+			const afterFlags = afterSlash.replace(/^[gimsux]*/, "")
+			if (afterFlags.length === 0 || /^[;,)}\]\s+\+\-\*\/=<>!&|]/.test(afterFlags)) {
+				return true
+			}
+		}
+
+		// 2. 后面跟着常见的结束字符
+		if (/^[;,)}\]\s]/.test(afterSlash)) {
+			return true
+		}
+
+		// 3. 行尾
+		if (afterSlash.length === 0) {
+			return true
+		}
+
+		// 4. 后面跟着操作符
+		if (/^[+\-*/=<>!&|]/.test(afterSlash)) {
+			return true
+		}
+
+		// 5. 后面跟着字符串连接符
+		if (afterSlash.startsWith(" + ") || afterSlash.startsWith(" +")) {
+			return true
+		}
+
+		return false
 	}
 
 	/**
